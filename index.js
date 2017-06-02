@@ -1,5 +1,5 @@
 /* jshint node:true */
-const { statSync } = require('fs');
+var statSync = require('fs').statSync;
 var lr = require('tiny-lr');
 var servers = {};
 
@@ -54,17 +54,17 @@ LiveReloadPlugin.prototype.start = function start(watching, cb) {
 };
 
 LiveReloadPlugin.prototype.done = function done(stats) {
-  this.changedFiles = Object.keys(stats.compilation.fileTimestamps).filter(watchfile => {
+  this.changedFiles = Object.keys(stats.compilation.fileTimestamps).filter(function(watchfile) {
     return this.startTime < Math.ceil(statSync(watchfile).mtime);
-  });
+  }.bind(this));
 
   this.startTime = Date.now();
 
-  const { assets } = stats.compilation;
+  var assets = stats.compilation.assets;
   const include = [];
 
-  this.changedFiles.forEach(changedFile => {
-    Object.keys(assets).forEach(assetName => {
+  this.changedFiles.forEach(function(changedFile) {
+    Object.keys(assets).forEach(function(assetName) {
       const asset = Object.assign({}, assets[assetName]);
       const sources = [];
 
@@ -72,17 +72,17 @@ LiveReloadPlugin.prototype.done = function done(stats) {
         include.push(assetName);
       }
 
-      (asset.children || []).forEach(child => {
+      (asset.children || []).forEach(function(child) {
         if (child && child._sourceMap && child._sourceMap.sources) {
-          sources.push(...child._sourceMap.sources);
+          sources.push.apply(sources, child._sourceMap.sources);
         }
       });
 
       if (sources.includes(changedFile)) {
         include.push(assetName);
       }
-    });
-  });
+    }, this);
+  }, this);
 
   var modules = stats.compilation.modules.find(child => child.reason);
   var hash = stats.compilation.hash;
