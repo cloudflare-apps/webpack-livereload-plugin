@@ -1,4 +1,5 @@
 /* jshint node:true */
+const { statSync } = require('fs');
 var lr = require('tiny-lr');
 var servers = {};
 
@@ -13,6 +14,10 @@ function LiveReloadPlugin(options) {
   this.protocol = this.options.protocol || 'http';
   this.hostname = this.options.hostname || 'localhost';
   this.server = null;
+
+  this.startTime = new Date();
+  this.startTime.setSeconds(-process.uptime());
+  this.prevTimestamps = {};
 }
 
 function arraysEqual(a1, a2){
@@ -49,18 +54,48 @@ LiveReloadPlugin.prototype.start = function start(watching, cb) {
 };
 
 LiveReloadPlugin.prototype.done = function done(stats) {
+  this.changedFiles = Object.keys(stats.compilation.fileTimestamps).filter(watchfile => {
+    return this.startTime < Math.ceil(statSync(watchfile).mtime);
+  });
+
+  this.startTime = Date.now();
+
+  const { assets } = stats.compilation;
+  const include = [];
+
+  this.changedFiles.forEach(changedFile => {
+    Object.keys(assets).forEach(assetName => {
+      const asset = Object.assign({}, assets[assetName]);
+      const sources = [];
+
+      if (asset.emitted && asset.existsAt.split('.').slice(-1)[0] !== 'css') {
+        include.push(assetName);
+      }
+
+      (asset.children || []).forEach(child => {
+        if (child && child._sourceMap && child._sourceMap.sources) {
+          sources.push(...child._sourceMap.sources);
+        }
+      });
+
+      if (sources.includes(changedFile)) {
+        include.push(assetName);
+      }
+    });
+  });
+
+  var modules = stats.compilation.modules.find(child => child.reason);
   var hash = stats.compilation.hash;
   var childHashes = (stats.compilation.children || []).map(child => child.hash);
-  var files = Object.keys(stats.compilation.assets);
-  var include = files.filter(function(file) {
+  var updated = include.filter(function(file) {
     return !file.match(this.ignore);
   }, this);
 
-  if (this.isRunning && (hash !== this.lastHash || !arraysEqual(childHashes, this.lastChildHashes)) && include.length > 0) {
+  if (this.isRunning && (hash !== this.lastHash || !arraysEqual(childHashes, this.lastChildHashes)) && updated.length > 0) {
     this.lastHash = hash;
     this.lastChildHashes = childHashes;
     setTimeout(function onTimeout() {
-      this.server.notifyClients(include);
+      this.server.notifyClients(updated);
     }.bind(this));
   }
 };
