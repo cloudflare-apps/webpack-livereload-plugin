@@ -54,7 +54,9 @@ LiveReloadPlugin.prototype.start = function start(watching, cb) {
 };
 
 LiveReloadPlugin.prototype.done = function done(stats) {
-  this.changedFiles = Object.keys(stats.compilation.fileTimestamps).filter(function(watchfile) {
+  var timestamps = stats && stats.compilation && stats.compilation.fileTimestamps || {};
+
+  this.changedFiles = Object.keys(timestamps).filter(function(watchfile) {
     return this.startTime < Math.ceil(statSync(watchfile).mtime);
   }.bind(this));
 
@@ -84,7 +86,6 @@ LiveReloadPlugin.prototype.done = function done(stats) {
     }, this);
   }, this);
 
-  var modules = stats.compilation.modules.find(child => child.reason);
   var hash = stats.compilation.hash;
   var childHashes = (stats.compilation.children || []).map(child => child.hash);
   var updated = include.filter(function(file) {
