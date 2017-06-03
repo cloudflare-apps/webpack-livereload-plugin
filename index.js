@@ -29,7 +29,6 @@ Object.defineProperty(LiveReloadPlugin.prototype, 'isRunning', {
 });
 
 LiveReloadPlugin.prototype.start = function start(watching, cb) {
-  this.compilation = watching;
   var port = this.port;
   var quiet = this.quiet;
   if (servers[port]) {
@@ -55,7 +54,7 @@ LiveReloadPlugin.prototype.start = function start(watching, cb) {
 };
 
 LiveReloadPlugin.prototype.done = function done(stats) {
-  var timestamps = this.compilation ? this.compilation.fileTimestamps : {};
+  var timestamps = stats.compilation ? stats.compilation.fileTimestamps : {};
 
   this.changedFiles = Object.keys(timestamps).filter(function(watchfile) {
     return this.startTime < Math.ceil(statSync(watchfile).mtime);
