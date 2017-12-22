@@ -7,6 +7,7 @@ function LiveReloadPlugin(options) {
   this.options = options || {};
   this.port = this.options.port || 35729;
   this.ignore = this.options.ignore || null;
+  this.fileFilter = this.options.fileFilter || null;
   this.quiet = this.options.quiet || false;
 
   // add delay, but remove it from options, so it doesn't get passed to tinylr
@@ -58,6 +59,7 @@ LiveReloadPlugin.prototype.start = function start(watching, cb) {
 };
 
 LiveReloadPlugin.prototype.done = function done(stats) {
+
   var timestamps = stats.compilation ? stats.compilation.fileTimestamps : {};
 
   this.changedFiles = Object.keys(timestamps).filter(function(watchfile) {
@@ -66,35 +68,16 @@ LiveReloadPlugin.prototype.done = function done(stats) {
 
   this.startTime = Date.now();
 
-  var assets = stats.compilation.assets;
-  var include = [];
+  var updated = this.changedFiles
 
-  this.changedFiles.forEach(function(changedFile) {
-    Object.keys(assets).forEach(function(assetName) {
-      const asset = Object.assign({}, assets[assetName]);
-      const sources = [];
-
-      if (asset.emitted && asset.existsAt.split('.').slice(-1)[0] !== 'css') {
-        include.push(assetName);
-      }
-
-      (asset.children || []).forEach(function(child) {
-        if (child && child._sourceMap && child._sourceMap.sources) {
-          sources.push.apply(sources, child._sourceMap.sources);
-        }
-      });
-
-      if (sources.includes(changedFile)) {
-        include.push(assetName);
-      }
-    }, this);
-  }, this);
+  if (this.fileFilter) {
+    updated = this.changedFiles.filter(file => file.match(this.fileFilter))
+  }
 
   var hash = stats.compilation.hash;
   var childHashes = (stats.compilation.children || []).map(child => child.hash);
-  var updated = include.filter(function(file) {
-    return !file.match(this.ignore);
-  }, this);
+
+  console.log('upd', updated)
 
   if (this.isRunning && (hash !== this.lastHash || !arraysEqual(childHashes, this.lastChildHashes)) && updated.length > 0) {
     this.lastHash = hash;
