@@ -77,8 +77,6 @@ LiveReloadPlugin.prototype.done = function done(stats) {
   var hash = stats.compilation.hash;
   var childHashes = (stats.compilation.children || []).map(child => child.hash);
 
-  console.log('upd', updated)
-
   if (this.isRunning && (hash !== this.lastHash || !arraysEqual(childHashes, this.lastChildHashes)) && updated.length > 0) {
     this.lastHash = hash;
     this.lastChildHashes = childHashes;
